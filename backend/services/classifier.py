@@ -56,10 +56,10 @@ class EmailClassifier:
             classification_method = "default"
             confidence = "low"
             
-            # Step 1: Try AI classification (PRIMARY METHOD) with cleaned text
+            
             logger.info("[CLASSIFIER STEP 1] Attempting AI classification with NLP-cleaned text...")
             try:
-                # Usar texto normalizado para IA
+              
                 cleaned_content = preprocessed['cleaned_text']
                 
                 ai_result = await asyncio.wait_for(
@@ -74,7 +74,7 @@ class EmailClassifier:
                 logger.info(f"[CLASSIFIER STEP 1] Reasoning: {final_reasoning}")
             except asyncio.TimeoutError:
                 logger.warning(f"[CLASSIFIER STEP 1] ⏱️ AI classification TIMEOUT after 15s")
-                # Step 2: Fallback enriquecido com features NLP
+                
                 fallback_result = self._nlp_enhanced_fallback(content, subject, features)
                 final_category = fallback_result['category']
                 final_reasoning = fallback_result['reasoning']
@@ -83,7 +83,7 @@ class EmailClassifier:
                 logger.info(f"[CLASSIFIER STEP 2] 🔄 NLP-enhanced fallback: {final_category} (confidence: {confidence})")
             except Exception as ai_error:
                 logger.warning(f"[CLASSIFIER STEP 1] ⚠️ AI classification ERROR: {str(ai_error)}")
-                # Step 2: Fallback enriquecido com features NLP
+                
                 fallback_result = self._nlp_enhanced_fallback(content, subject, features)
                 final_category = fallback_result['category']
                 final_reasoning = fallback_result['reasoning']
@@ -91,7 +91,7 @@ class EmailClassifier:
                 classification_method = "NLP_fallback"
                 logger.info(f"[CLASSIFIER STEP 2] 🔄 NLP-enhanced fallback: {final_category} (confidence: {confidence})")
             
-            # Step 3: Generate appropriate response
+            
             logger.info(f"[CLASSIFIER STEP 3] Generating response for category: {final_category}")
             structured_response = None
             try:
@@ -102,7 +102,7 @@ class EmailClassifier:
                 logger.info(f"[CLASSIFIER STEP 3] ✅ Response generated successfully")
             except Exception as response_error:
                 logger.warning(f"[CLASSIFIER STEP 3] ⚠️ Response generation failed: {str(response_error)}")
-                # Simplified fallback response
+                
                 if final_category == "productive":
                     body = "Prezado(a),\n\nRecebemos sua mensagem e nossa equipe irá analisá-la. Retornaremos o contato em breve.\n\nAtenciosamente,\nEquipe de Suporte"
                 else:
@@ -149,7 +149,7 @@ class EmailClassifier:
         if features is None:
             features = self.feature_extractor.extract_all_features(content, subject)
         
-        # Usar scores de features extraídas
+       
         technical_score = features.get('technical_score', 0.0)
         business_score = features.get('business_score', 0.0)
         support_score = features.get('support_score', 0.0)
@@ -159,9 +159,7 @@ class EmailClassifier:
         logger.info(f"[NLP FALLBACK] Scores: tech={technical_score:.2f}, biz={business_score:.2f}, "
                    f"support={support_score:.2f}, social={social_score:.2f}, urgency={urgency_score:.2f}")
         
-        # LÓGICA DE DECISÃO BASEADA EM FEATURES
-        
-        # Alta urgência + qualquer score técnico/negócio = productive
+       
         if urgency_score > 0.5 and (technical_score > 0.2 or business_score > 0.2):
             return {
                 'category': 'productive',

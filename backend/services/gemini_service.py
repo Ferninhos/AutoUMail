@@ -13,16 +13,16 @@ class GeminiService:
     
     def __init__(self):
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
-        self.model = "gemini-2.5-flash-lite"  # Flash-lite for fast classification
-        self.fallback_model = "gemini-2.5-flash-lite"  # Same model for consistency
+        self.model = "gemini-2.5-flash-lite"  
+        self.fallback_model = "gemini-2.5-flash-lite"  
         
-        # Circuit breaker state (more aggressive)
+
         self.circuit_breaker_errors = []
-        self.circuit_breaker_threshold = 3  # Open faster
-        self.circuit_breaker_timeout = 45  # seconds (reduced for lite)
+        self.circuit_breaker_threshold = 3  
+        self.circuit_breaker_timeout = 45  
         self.circuit_open_until = 0
         
-        # Get token from environment variable
+
         gemini_key = os.environ.get("GEMINI_API_KEY")
         if not gemini_key:
             raise ValueError("GEMINI_API_KEY environment variable is required")
@@ -47,11 +47,11 @@ class GeminiService:
                 logger.warning("[AI CLASSIFICATION] Circuit breaker is OPEN - skipping AI call")
                 raise Exception("Circuit breaker is open - too many recent errors")
             
-            # Limit content to avoid token limits
+
             limited_content = content[:3000] if len(content) > 3000 else content
             subject_text = f"Assunto: {subject}\n\n" if subject else ""
             
-            # Always use fixed standard criteria
+
             prompt = f"""Classifique este email como PRODUTIVO ou IMPRODUTIVO.
 
 PRODUTIVO = Email relacionado aos NEGÓCIOS da empresa:
@@ -79,7 +79,7 @@ Conteúdo: {limited_content}
 
 Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "conversa pessoal") e explique POR QUE é produtivo ou improdutivo em 2-3 frases claras."""
 
-            # Use tool calling for guaranteed structured output
+
             response = await self._call_with_tool_calling(
                 prompt=prompt,
                 tool_name="classify_email",
@@ -122,21 +122,21 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
         Gera uma resposta estruturada (destinatário, assunto, corpo) baseada no contexto
         """
         try:
-            # Check circuit breaker
+
             if self._is_circuit_open():
                 raise Exception("Circuit breaker open - too many recent failures")
             
-            # Limit context to prevent token overflow
+
             limited_context = context[:800] if len(context) > 800 else context
             prompt = self._create_structured_prompt(limited_context, category, subject, sender, company_config)
             
-            # Try with retries and fallback model
+
             response = await self._call_with_retry(prompt, max_output_tokens=1024)
             
             if not response or len(response.strip()) < 20:
                 raise Exception("Gemini API returned empty or too short response")
             
-            # Parse JSON response
+
             parsed = self._parse_structured_response(response, sender, subject)
             return parsed
             
@@ -148,12 +148,12 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
         """Check if circuit breaker is open"""
         current_time = time.time()
         
-        # Reset if timeout passed
+
         if current_time > self.circuit_open_until:
             self.circuit_breaker_errors = []
             return False
         
-        # Check recent errors
+
         recent_errors = [t for t in self.circuit_breaker_errors if current_time - t < 60]
         self.circuit_breaker_errors = recent_errors
         
@@ -168,7 +168,7 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
         current_time = time.time()
         self.circuit_breaker_errors.append(current_time)
         
-        # Open circuit if threshold reached
+
         if len(self.circuit_breaker_errors) >= self.circuit_breaker_threshold:
             self.circuit_open_until = current_time + self.circuit_breaker_timeout
             logger.warning(f"Circuit breaker opened for {self.circuit_breaker_timeout}s")
@@ -177,10 +177,10 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
         """Call Gemini API with retry logic and exponential backoff"""
         for attempt in range(max_attempts):
             try:
-                # Use fallback model on retry
+
                 model = self.fallback_model if attempt > 0 else self.model
                 
-                # Add jitter to backoff
+ 
                 if attempt > 0:
                     backoff = (2 ** attempt) + (asyncio.get_event_loop().time() % 1)
                     logger.info(f"Retry attempt {attempt + 1}/{max_attempts} after {backoff:.2f}s with model {model}")
@@ -195,16 +195,16 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
             except Exception as e:
                 error_str = str(e)
                 
-                # Record 503 errors for circuit breaker
+
                 if "503" in error_str or "UNAVAILABLE" in error_str:
                     self._record_error()
                     logger.warning(f"503 error on attempt {attempt + 1}: {error_str}")
                     
-                    # Continue to retry on 503
+
                     if attempt < max_attempts - 1:
                         continue
                 
-                # Don't retry on other errors
+
                 if attempt == max_attempts - 1:
                     raise
                     
@@ -223,8 +223,8 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
                 "parts": [{"text": prompt}]
             }],
             "generationConfig": {
-                "temperature": 0.1,  # Very low for consistent classification with flash-lite
-                "maxOutputTokens": max_tokens or 512,  # Reduced for flash-lite
+                "temperature": 0.1,
+                "maxOutputTokens": max_tokens or 512, 
                 "topP": 0.8,
                 "topK": 40,
                 "candidateCount": 1,
@@ -239,26 +239,25 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
         try:
             logger.info(f"Starting Gemini API call with prompt length: {len(prompt)}")
             
-            timeout = aiohttp.ClientTimeout(total=12)  # 12 second timeout for flash-lite model
+            timeout = aiohttp.ClientTimeout(total=12) 
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(f"{url}?key={self.api_key}", json=payload, headers=headers) as response:
                     if response.status == 200:
                         result = await response.json()
                         logger.info(f"Gemini API call successful")
                         
-                        # Extrair texto gerado do formato do Gemini com fallbacks
+
                         try:
                             if 'candidates' in result and result['candidates']:
                                 candidate = result['candidates'][0]
                                 finish_reason = candidate.get('finishReason', 'UNKNOWN')
                                 logger.info(f"Gemini finish reason: {finish_reason}")
                                 
-                                # Extract text from various possible structures
+
                                 generated_text = ""
-                                
-                                # Try different text extraction paths
+
                                 if 'content' in candidate and 'parts' in candidate['content']:
-                                    # Concatenate all parts if multiple exist
+                 
                                     parts = candidate['content']['parts']
                                     generated_text = ''.join(part.get('text', '') for part in parts if 'text' in part)
                                 elif 'content' in candidate and 'text' in candidate['content']:
@@ -270,7 +269,7 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
                                     logger.info(f"Extracted text ({len(generated_text)} chars): {generated_text[:100]}...")
                                     return generated_text.strip()
                                 
-                                # If MAX_TOKENS and no text, try retry with shorter prompt
+                              
                                 if finish_reason == 'MAX_TOKENS':
                                     logger.warning("Response truncated due to max tokens, will retry with shorter prompt")
                                     return ""
@@ -300,7 +299,7 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
         """
         import re
         
-        # Extrair email do sender ou do contexto
+    
         sender_email = None
         sender_name = sender
         
@@ -308,36 +307,36 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
             sender_email = sender
             sender_name = sender.split('@')[0].replace('.', ' ').title()
         
-        # Tentar extrair email do contexto se não fornecido
+      
         if not sender_email:
             email_match = re.search(r'([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)', context)
             if email_match:
                 sender_email = email_match.group(1)
         
-        # Tentar extrair nome real do contexto (após "Atenciosamente", "Cordialmente", etc)
+        
         if not sender_name or sender_name == sender:
             sig_match = re.search(r'(?:Atenciosamente|Cordialmente|Abraços|At\.te)[,\s]*\n+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+)+)', context, re.IGNORECASE)
             if sig_match:
                 sender_name = sig_match.group(1).strip()
         
-        # Tentar extrair cargo/função
+     
         sender_role = None
         if sender_name:
-            # Procurar linha após o nome que pode ser o cargo
+            
             name_pattern = re.escape(sender_name)
             role_match = re.search(rf'{name_pattern}\s*\n\s*([A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç\s]+(?:de|da|do)\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+|[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç\s]+)', context)
             if role_match:
                 potential_role = role_match.group(1).strip()
-                # Validar se parece um cargo (não é email, telefone, etc)
+                
                 if not re.search(r'[@\d\(\)]', potential_role) and len(potential_role) < 50:
                     sender_role = potential_role
         
-        # Definir valores para resposta
+       
         recipient = sender_email if sender_email else "cliente@email.com"
         response_subject = f"Re: {subject}" if subject else "Re: Sua Solicitação"
         greeting = f"Prezado(a) {sender_name}" if sender_name and sender_name != sender else "Prezado(a)"
         
-        # Get company name from config
+        
         company_name = (company_config or {}).get('company_name', 'Equipe de Suporte')
         
         sender_context = f"{sender_name}"
@@ -346,7 +345,7 @@ Identifique o tipo de questão (ex: "problema técnico", "dúvida comercial", "c
         if sender_email:
             sender_context += f" - {sender_email}"
         
-        # Get custom instructions if available
+        
         custom_instructions = ""
         if company_config and company_config.get('custom_instructions'):
             custom_instructions = f"\n\nINSTRUÇÕES PERSONALIZADAS DA EMPRESA:\n{company_config['custom_instructions']}"
@@ -419,19 +418,19 @@ Gere APENAS um JSON válido com resposta personalizada e específica:
         Parse JSON response from Gemini
         """
         try:
-            # Try to extract JSON from response
+            
             response = response.strip()
             
-            # Remove markdown code blocks if present
+            
             if response.startswith("```"):
                 response = response.split("```")[1]
                 if response.startswith("json"):
                     response = response[4:]
             
-            # Parse JSON
+            
             parsed = json.loads(response.strip())
             
-            # Validate required fields
+            
             if "to" in parsed and "subject" in parsed and "body" in parsed:
                 return {
                     "to": parsed["to"],
@@ -444,7 +443,7 @@ Gere APENAS um JSON válido com resposta personalizada e específica:
         except Exception as e:
             logger.warning(f"Failed to parse JSON response, creating fallback: {e}")
             
-            # Fallback: create structured response from text
+            
             return {
                 "to": sender if sender else "cliente@email.com",
                 "subject": f"Re: {subject}" if subject else "Resposta ao seu contato",
@@ -455,10 +454,10 @@ Gere APENAS um JSON válido com resposta personalizada e específica:
         """
         Limpa e formata a resposta gerada pelo Gemini
         """
-        # Limpar a resposta
+        
         formatted = response.strip()
         
-        # Remover prompt da resposta se ainda estiver presente
+        
         if "Resposta profissional:" in formatted:
             formatted = formatted.split("Resposta profissional:")[-1].strip()
         
@@ -489,7 +488,7 @@ Gere APENAS um JSON válido com resposta personalizada e específica:
                 }
             },
             "generationConfig": {
-                "temperature": 0.1,  # Very low for consistent structured output with flash-lite
+                "temperature": 0.1,  
                 "maxOutputTokens": 256,
                 "candidateCount": 1
             }
@@ -509,7 +508,7 @@ Gere APENAS um JSON válido com resposta personalizada e específica:
                         result = await response.json()
                         logger.info(f"[TOOL CALLING] API call successful")
                         
-                        # Extract function call from response
+                       
                         if 'candidates' in result and result['candidates']:
                             candidate = result['candidates'][0]
                             
@@ -522,7 +521,7 @@ Gere APENAS um JSON válido com resposta personalizada e específica:
                                             logger.info(f"[TOOL CALLING] Extracted args: {args}")
                                             return args
                         
-                        # If no function call found, try to parse as JSON from text
+                        
                         logger.warning("[TOOL CALLING] No function call found, trying text fallback")
                         if 'candidates' in result and result['candidates']:
                             candidate = result['candidates'][0]

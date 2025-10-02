@@ -7,12 +7,12 @@ class CompanyService:
     """Service for managing company configurations"""
     
     def __init__(self):
-        # In-memory storage (em produção, usar banco de dados)
+        
         self._configs: Dict[str, CompanyConfig] = {}
     
     def create_config(self, request: CompanyConfigRequest) -> CompanyConfig:
         """Create a new company configuration"""
-        config_id = str(uuid.uuid4())[:8].upper()  # ID curto e legível
+        config_id = str(uuid.uuid4())[:8].upper()  
         
         config = CompanyConfig(
             config_id=config_id,
