@@ -119,11 +119,3 @@
   }
 }
 
-[data-lovable-badge],
-iframe[src*="lovable"],
-a[href*="lovable.app/edit"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
