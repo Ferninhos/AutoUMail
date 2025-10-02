@@ -50,23 +50,3 @@ Classifica um email como produtivo ou improdutivo e gera resposta automática.
   "processedAt": "2024-01-15T10:30:05Z"
 }
 ```
-
-### GET /health
-Verificação de saúde da API.
-
-### GET /
-Informações básicas da API.
-
-## Documentação
-
-Acesse `http://localhost:8000/docs` para documentação interativa (Swagger UI).
-
-## Funcionalidades
-
-- ✅ Classificação de emails (produtivo/improdutivo)
-- ✅ Geração de respostas automáticas
-- ✅ Integração com Gemini AI (Google)
-- ✅ Sistema de fallback para maior confiabilidade
-- ✅ Logs estruturados
-- ✅ Documentação automática
-- ✅ CORS configurado para frontend React
