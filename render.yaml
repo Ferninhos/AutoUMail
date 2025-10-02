@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: email-classification-api
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    envVars:
+      - key: HUGGING_FACE_TOKEN
+        sync: false
+    healthCheckPath: /health
