@@ -21,6 +21,6 @@ Ferramenta que lê o texto de um email (por .txt, .pdf ou texto normal), realiza
 ### API
 - Gemini-flash-lite (com fallback pro Gemini-flash)
 
-### Deploy
+### Deploy: https://autouemailapi.netlify.app/
 - Netlify -> Frontend
 - Render -> Backend
